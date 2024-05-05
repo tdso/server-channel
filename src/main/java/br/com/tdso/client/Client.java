@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
-import java.net.UnknownHostException;
 import java.util.Scanner;
 
 public class Client {
@@ -25,10 +24,11 @@ public class Client {
                 System.out.println("Enter with command: ");
                 request = scanner.nextLine();
 
-                // envia comando para o servidor
-                output.println(request);
 
                 if (!request.equals("exit")){
+                    // envia comando para o servidor
+                    output.println(request);
+
                     // receber a resposta do servidor
                     response = input.readLine();
 

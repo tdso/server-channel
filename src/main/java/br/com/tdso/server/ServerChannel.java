@@ -6,43 +6,58 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ServerChannel {
 
     public static void main(String[] args) {
 
+        List<SocketChannel> channels = new ArrayList<>();
+
         try (ServerSocketChannel serverSocketChannel = ServerSocketChannel.open()) {
             serverSocketChannel.bind(new InetSocketAddress(5000));
+            serverSocketChannel.configureBlocking(false); // non block
+
             System.out.println("Server listening port " + serverSocketChannel.socket().getLocalPort() + " !!");
 
             while (true) {
+                // now no block
                 SocketChannel clientChannel = serverSocketChannel.accept();
-                System.out.printf("Client %s connected ...", clientChannel.socket().getRemoteSocketAddress());
-                ByteBuffer buffer = ByteBuffer.allocate(1024);
-                SocketChannel channel = clientChannel;
-                int readBytes = channel.read(buffer);
 
-                if (readBytes > 0) {
-                    buffer.flip();
-                    channel.write(ByteBuffer.wrap("Echo Server >  ".getBytes(StandardCharsets.UTF_8)));
-                    channel.write(ByteBuffer.wrap("Transmiting : ".getBytes(StandardCharsets.UTF_8)));
-                    System.out.println("waiting ...");
-                    Thread.sleep(5000);
-                    while (buffer.hasRemaining()) {
-                        channel.write(buffer);
-                    }
-                    System.out.println("Capacity = " + buffer.capacity());
-                    System.out.println("Limit = " + buffer.limit());
-                    System.out.println("Position = " + buffer.position());
-                    buffer.clear();
-                } else if (readBytes == -1) {
-                    System.out.printf("Connection client %s lost", clientChannel.getRemoteAddress());
-                    clientChannel.close();
+                if (clientChannel != null) {
+                    System.out.printf("Client %s connected ...", clientChannel.socket().getRemoteSocketAddress());
+                    clientChannel.configureBlocking(false);
+                    channels.add(clientChannel);
                 }
+                    ByteBuffer buffer = ByteBuffer.allocate(1024);
+
+                    for (int i = 0; i < channels.size(); i++) {
+
+                        SocketChannel channel = channels.get(i);
+
+                        int readBytes = channel.read(buffer);
+
+                        if (readBytes > 0) {
+                            buffer.flip();
+                            channel.write(ByteBuffer.wrap("Echo Server >  ".getBytes(StandardCharsets.UTF_8)));
+                            channel.write(ByteBuffer.wrap("Transmiting : ".getBytes(StandardCharsets.UTF_8)));
+                            while (buffer.hasRemaining()) {
+                                channel.write(buffer);
+                            }
+                            buffer.clear();
+                        } else if (readBytes == -1) {
+                            System.out.printf("Connection client %s lost", channel.getRemoteAddress());
+                            channels.remove(i);
+                            channel.close();
+                        }
+                    }
+
             }
-        } catch (IOException | InterruptedException e) {
+        } catch (IOException e)  {
             System.out.println("Erro > " + e.getMessage());
             System.out.println("Local > " + e.getLocalizedMessage());
+            System.out.println(" ");
             e.printStackTrace();
         }
     }
